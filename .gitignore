@@ -1,1 +1,4 @@
-beginner-course/.gradle/**
+.gradle/*
+.idea/
+build/
+out/
