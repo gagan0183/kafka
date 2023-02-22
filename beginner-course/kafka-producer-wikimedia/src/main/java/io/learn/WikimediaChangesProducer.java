@@ -1,6 +1,7 @@
 package io.learn;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import com.launchdarkly.eventsource.EventSource;
@@ -20,6 +21,11 @@ public class WikimediaChangesProducer {
         properties.setProperty("bootstrap.servers", bootstrapServers);
         properties.setProperty("key.serializer", StringSerializer.class.getName());
         properties.setProperty("value.serializer", StringSerializer.class.getName());
+
+        // set safe producer config > 3.0
+        properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+        properties.setProperty(ProducerConfig.ACKS_CONFIG, "all");
+        properties.setProperty(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE));
 
         // create the producer
         KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
