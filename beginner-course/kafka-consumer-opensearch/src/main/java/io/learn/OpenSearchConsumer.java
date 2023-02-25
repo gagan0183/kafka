@@ -1,5 +1,7 @@
 package io.learn;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -77,6 +79,15 @@ public class OpenSearchConsumer {
         return new KafkaConsumer<String, String>(properties);
     }
 
+    private static String extractId(String value) {
+        return JsonParser.parseString(value)
+                .getAsJsonObject()
+                .get("meta")
+                .getAsJsonObject()
+                .get("id")
+                .getAsString();
+    }
+
     public static void main(String[] args) throws IOException {
 
         Logger log = LoggerFactory.getLogger(OpenSearchConsumer.class.getSimpleName());
@@ -108,8 +119,17 @@ public class OpenSearchConsumer {
                 for (ConsumerRecord<String, String> record : records) {
                     try {
                         // send the record into opensearch
+
+                        // strategy 1
+//                        String id = record.topic() + "_" + record.partition() + "_" + record.offset();
+
+                        // strategy 2
+                        // extract id from json
+                        String id = extractId(record.value());
+
                         IndexRequest indexRequest = new IndexRequest("wikimedia")
-                                .source(record.value(), XContentType.JSON);
+                                .source(record.value(), XContentType.JSON)
+                                .id(id);
                         IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
                         log.info(response.getId());
                     } catch (Exception e) {
