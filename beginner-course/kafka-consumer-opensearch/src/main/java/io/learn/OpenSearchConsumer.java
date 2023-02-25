@@ -8,6 +8,8 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultConnectionKeepAliveStrategy;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 
@@ -45,7 +47,11 @@ public class OpenSearchConsumer {
     }
 
     public static void main(String[] args) {
+
+        Logger log = LoggerFactory.getLogger(OpenSearchConsumer.class.getSimpleName());
+
         // create opensearch client
+        RestHighLevelClient openSearchClient = createOpenSearchClient();
 
         // create our kafka client
 
