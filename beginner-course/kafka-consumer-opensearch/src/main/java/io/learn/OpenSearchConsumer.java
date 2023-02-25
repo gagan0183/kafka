@@ -6,11 +6,15 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultConnectionKeepAliveStrategy;
+import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.indices.CreateIndexRequest;
+import org.opensearch.client.indices.GetIndexRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 
 public class OpenSearchConsumer {
@@ -46,17 +50,29 @@ public class OpenSearchConsumer {
         return restHighLevelClient;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         Logger log = LoggerFactory.getLogger(OpenSearchConsumer.class.getSimpleName());
 
         // create opensearch client
         RestHighLevelClient openSearchClient = createOpenSearchClient();
 
+        // we need to create index on opensearch if it does not exist already
+        try(openSearchClient) {
+            boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest("wikimedia"), RequestOptions.DEFAULT);
+            if (!indexExists) {
+                CreateIndexRequest createIndexRequest = new CreateIndexRequest("wikimedia");
+                openSearchClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+                log.info("The wikimedia index has been created");
+            } else {
+                log.info("The wikimedia index already exists");
+            }
+        }
+
         // create our kafka client
 
         // main code logic
 
-        // close thins
+        // close things
     }
 }
