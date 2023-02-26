@@ -12,6 +12,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
@@ -101,6 +102,24 @@ public class OpenSearchConsumer {
         // create our kafka client
         KafkaConsumer<String, String> consumer = createKafkaConsumer();
 
+        // get a reference to main
+        final Thread mainThread = Thread.currentThread();
+
+        // add a shutdown
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                log.info("Shutdown detect. Let' exit by calling");
+                consumer.wakeup();
+
+                // join the main thread to allow the execution of the code in the main
+                try {
+                    mainThread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
         // we need to create index on opensearch if it does not exist already
         try(openSearchClient; consumer) {
             boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest("wikimedia"), RequestOptions.DEFAULT);
@@ -153,6 +172,14 @@ public class OpenSearchConsumer {
                     consumer.commitAsync();
                 }
             }
+        } catch (WakeupException e) {
+            log.info("Consumer is starting to shutdown");
+        } catch (Exception e) {
+            log.info("Unexpected exception: ", e);
+        } finally {
+            consumer.close();
+            openSearchClient.close();
+            log.info("Consume is not gracefully shutdown");
         }
 
         // main code logic
