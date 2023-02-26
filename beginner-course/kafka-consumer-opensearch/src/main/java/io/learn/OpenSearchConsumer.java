@@ -13,6 +13,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.client.RequestOptions;
@@ -117,6 +119,9 @@ public class OpenSearchConsumer {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
                 int recordCount = records.count();
                 log.info("Received " + recordCount + " record(s)");
+
+                BulkRequest bulkRequest = new BulkRequest();
+
                 for (ConsumerRecord<String, String> record : records) {
                     try {
                         // send the record into opensearch
@@ -128,15 +133,25 @@ public class OpenSearchConsumer {
                         // extract id from json
                         String id = extractId(record.value());
 
-                        IndexRequest indexRequest = new IndexRequest("wikimedia")
-                                .source(record.value(), XContentType.JSON)
-                                .id(id);
-                        IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
-                        log.info(response.getId());
+                        IndexRequest indexRequest = new IndexRequest("wikimedia").source(record.value(), XContentType.JSON).id(id);
+                        // IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+                        // log.info(response.getId());
+
+                        bulkRequest.add(indexRequest);
                     } catch (Exception e) {
                     }
                 }
-                consumer.commitAsync();
+
+                if (bulkRequest.numberOfActions() > 0) {
+                    BulkResponse response = openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    log.info("Inserted " + response.getItems().length + "records");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                    }
+
+                    consumer.commitAsync();
+                }
             }
         }
 
